@@ -1,0 +1,14 @@
+body {
+  text-align: center;
+  background: #111;
+  color: white;
+}
+video {
+  width: 45%;
+  margin: 10px;
+  background: black;
+}
+button {
+  padding: 10px 20px;
+  font-size: 18px;
+}
