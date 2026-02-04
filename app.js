@@ -37,7 +37,16 @@ remoteVideo.autoplay = true;
 document.body.append(localVideo, remoteVideo);
 remoteVideo.srcObject = remoteStream;
 
-const roomRef = firebase.database().ref("debug-room");
+const params = new URLSearchParams(window.location.search);
+let roomId = params.get("room");
+
+if (!roomId) {
+  roomId = Math.floor(Math.random() * 1000000).toString();
+  window.location.search = "?room=" + roomId;
+}
+
+const roomRef = firebase.database().ref("webrtc-rooms/" + roomId);
+roomRef.remove();
 
 async function start() {
   log("Getting camera...");
@@ -89,5 +98,6 @@ async function start() {
 }
 
 start();
+
 
 
