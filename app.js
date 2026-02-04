@@ -15,7 +15,8 @@ let localStream;
 let remoteStream = new MediaStream();
 remoteVideo.srcObject = remoteStream;
 
-const roomRef = firebase.database().ref("webrtc-room");
+const roomId = Math.floor(Math.random() * 1000000);
+const roomRef = firebase.database().ref("room-" + roomId);
 
 // -------------------- MEDIA --------------------
 
@@ -88,3 +89,4 @@ async function startCall() {
   await initMedia();
   await startCall();
 })();
+
