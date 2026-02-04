@@ -17,6 +17,13 @@ const pc = new RTCPeerConnection({
   ]
 });
 
+pc.oniceconnectionstatechange = () => {
+  const p = document.createElement("p");
+  p.innerText = "ICE State: " + pc.iceConnectionState;
+  document.body.append(p);
+};
+
+
 
 let localStream;
 let remoteStream = new MediaStream();
@@ -82,4 +89,5 @@ async function start() {
 }
 
 start();
+
 
