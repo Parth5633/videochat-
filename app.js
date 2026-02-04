@@ -1,64 +1,63 @@
-// ---------------- ROOM FROM URL ----------------
-const params = new URLSearchParams(window.location.search);
-let roomId = params.get("room");
-
-if (!roomId) {
-  roomId = Math.floor(Math.random() * 1000000);
-  window.location.search = "?room=" + roomId;
-}
-
-const roomRef = firebase.database().ref("room-" + roomId);
-
-// ---------------- WEBRTC SETUP ----------------
 const pc = new RTCPeerConnection({
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
 });
 
+let localStream;
+let remoteStream = new MediaStream();
+
 const localVideo = document.createElement("video");
 const remoteVideo = document.createElement("video");
-
 localVideo.autoplay = true;
 localVideo.muted = true;
 remoteVideo.autoplay = true;
 
 document.body.append(localVideo, remoteVideo);
 
-let localStream;
-let remoteStream = new MediaStream();
 remoteVideo.srcObject = remoteStream;
 
-// ---------------- MEDIA ----------------
+// ---------- UI ----------
+const createBtn = document.createElement("button");
+createBtn.innerText = "Create Room";
+document.body.append(createBtn);
+
+const joinInput = document.createElement("input");
+joinInput.placeholder = "Enter Room ID";
+document.body.append(joinInput);
+
+const joinBtn = document.createElement("button");
+joinBtn.innerText = "Join Room";
+document.body.append(joinBtn);
+
+// ---------- Media ----------
 async function initMedia() {
   localStream = await navigator.mediaDevices.getUserMedia({
     video: true,
     audio: true
   });
-
   localVideo.srcObject = localStream;
 
-  localStream.getTracks().forEach(track => {
-    pc.addTrack(track, localStream);
-  });
+  localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
 
-  pc.ontrack = event => {
-    event.streams[0].getTracks().forEach(track => {
-      remoteStream.addTrack(track);
-    });
-  };
-
-  pc.onicecandidate = event => {
-    if (event.candidate) {
-      roomRef.child("ice").push(event.candidate.toJSON());
-    }
+  pc.ontrack = e => {
+    e.streams[0].getTracks().forEach(t => remoteStream.addTrack(t));
   };
 }
 
-// ---------------- SIGNALING ----------------
-async function startCall() {
-  const offerSnap = await roomRef.child("offer").once("value");
+// ---------- Signaling ----------
+async function setupRoom(roomId, isCaller) {
+  const roomRef = firebase.database().ref("rooms/" + roomId);
 
-  if (!offerSnap.exists()) {
-    // FIRST USER
+  pc.onicecandidate = e => {
+    if (e.candidate) {
+      roomRef.child("ice").push(e.candidate.toJSON());
+    }
+  };
+
+  roomRef.child("ice").on("child_added", snap => {
+    pc.addIceCandidate(new RTCIceCandidate(snap.val()));
+  });
+
+  if (isCaller) {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     await roomRef.child("offer").set(offer);
@@ -72,24 +71,27 @@ async function startCall() {
     });
 
   } else {
-    // SECOND USER
-    await pc.setRemoteDescription(
-      new RTCSessionDescription(offerSnap.val())
-    );
+    const offer = (await roomRef.child("offer").once("value")).val();
+    await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     await roomRef.child("answer").set(answer);
   }
-
-  // ICE for both
-  roomRef.child("ice").on("child_added", snap => {
-    pc.addIceCandidate(new RTCIceCandidate(snap.val()));
-  });
 }
 
-// ---------------- START ----------------
-(async () => {
-  await initMedia();
-  await startCall();
-})();
+// ---------- Buttons ----------
+createBtn.onclick = async () => {
+  const roomId = Math.floor(Math.random() * 1000000).toString();
+  alert("Room ID: " + roomId);
+  await setupRoom(roomId, true);
+};
+
+joinBtn.onclick = async () => {
+  const roomId = joinInput.value.trim();
+  if (!roomId) return alert("Enter Room ID");
+  await setupRoom(roomId, false);
+};
+
+// ---------- Start ----------
+initMedia();
