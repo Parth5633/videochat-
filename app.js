@@ -41,6 +41,9 @@ async function init() {
 }
 
 async function startCall() {
+
+  await roomRef.remove();   // ← ADD THIS LINE
+
   const offerSnap = await roomRef.child("offer").once("value");
 
   if (!offerSnap.exists()) {
@@ -67,3 +70,4 @@ async function startCall() {
 }
 
 init();
+
