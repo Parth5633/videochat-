@@ -15,7 +15,16 @@ let localStream;
 let remoteStream = new MediaStream();
 remoteVideo.srcObject = remoteStream;
 
-const roomId = Math.floor(Math.random() * 1000000);
+const params = new URLSearchParams(window.location.search);
+let roomId = params.get("room");
+
+if (!roomId) {
+  roomId = Math.floor(Math.random() * 1000000);
+  window.location.search = "?room=" + roomId;
+}
+
+const roomRef = firebase.database().ref("room-" + roomId);
+
 const roomRef = firebase.database().ref("room-" + roomId);
 
 // -------------------- MEDIA --------------------
@@ -89,4 +98,5 @@ async function startCall() {
   await initMedia();
   await startCall();
 })();
+
 
