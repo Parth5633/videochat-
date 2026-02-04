@@ -17,8 +17,14 @@ remoteVideo.srcObject = remoteStream;
 
 const roomRef = firebase.database().ref("webrtc-room");
 
-async function init() {
-  localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+// -------------------- MEDIA --------------------
+
+async function initMedia() {
+  localStream = await navigator.mediaDevices.getUserMedia({
+    video: true,
+    audio: true
+  });
+
   localVideo.srcObject = localStream;
 
   localStream.getTracks().forEach(track => {
@@ -36,38 +42,49 @@ async function init() {
       roomRef.child("ice").push(event.candidate.toJSON());
     }
   };
-
-  startCall();
 }
 
+// -------------------- SIGNALING --------------------
+
 async function startCall() {
-
-  await roomRef.remove();   // ← ADD THIS LINE
-
   const offerSnap = await roomRef.child("offer").once("value");
 
   if (!offerSnap.exists()) {
+    // FIRST USER (creates offer)
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     await roomRef.child("offer").set(offer);
 
     roomRef.child("answer").on("value", async snap => {
       if (snap.exists()) {
-        await pc.setRemoteDescription(new RTCSessionDescription(snap.val()));
+        await pc.setRemoteDescription(
+          new RTCSessionDescription(snap.val())
+        );
       }
     });
 
   } else {
-    await pc.setRemoteDescription(new RTCSessionDescription(offerSnap.val()));
+    // SECOND USER (answers)
+    await roomRef.child("ice").remove(); // clean old ICE
+
+    await pc.setRemoteDescription(
+      new RTCSessionDescription(offerSnap.val())
+    );
+
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     await roomRef.child("answer").set(answer);
   }
 
+  // ICE listener for both
   roomRef.child("ice").on("child_added", snap => {
     pc.addIceCandidate(new RTCIceCandidate(snap.val()));
   });
 }
 
-init();
+// -------------------- START --------------------
 
+(async () => {
+  await initMedia();
+  await startCall();
+})();
