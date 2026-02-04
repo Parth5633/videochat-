@@ -1,3 +1,15 @@
+// ---------------- ROOM FROM URL ----------------
+const params = new URLSearchParams(window.location.search);
+let roomId = params.get("room");
+
+if (!roomId) {
+  roomId = Math.floor(Math.random() * 1000000);
+  window.location.search = "?room=" + roomId;
+}
+
+const roomRef = firebase.database().ref("room-" + roomId);
+
+// ---------------- WEBRTC SETUP ----------------
 const pc = new RTCPeerConnection({
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
 });
@@ -15,20 +27,7 @@ let localStream;
 let remoteStream = new MediaStream();
 remoteVideo.srcObject = remoteStream;
 
-const params = new URLSearchParams(window.location.search);
-let roomId = params.get("room");
-
-if (!roomId) {
-  roomId = Math.floor(Math.random() * 1000000);
-  window.location.search = "?room=" + roomId;
-}
-
-const roomRef = firebase.database().ref("room-" + roomId);
-
-const roomRef = firebase.database().ref("room-" + roomId);
-
-// -------------------- MEDIA --------------------
-
+// ---------------- MEDIA ----------------
 async function initMedia() {
   localStream = await navigator.mediaDevices.getUserMedia({
     video: true,
@@ -54,13 +53,12 @@ async function initMedia() {
   };
 }
 
-// -------------------- SIGNALING --------------------
-
+// ---------------- SIGNALING ----------------
 async function startCall() {
   const offerSnap = await roomRef.child("offer").once("value");
 
   if (!offerSnap.exists()) {
-    // FIRST USER (creates offer)
+    // FIRST USER
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     await roomRef.child("offer").set(offer);
@@ -74,9 +72,7 @@ async function startCall() {
     });
 
   } else {
-    // SECOND USER (answers)
-    await roomRef.child("ice").remove(); // clean old ICE
-
+    // SECOND USER
     await pc.setRemoteDescription(
       new RTCSessionDescription(offerSnap.val())
     );
@@ -86,17 +82,14 @@ async function startCall() {
     await roomRef.child("answer").set(answer);
   }
 
-  // ICE listener for both
+  // ICE for both
   roomRef.child("ice").on("child_added", snap => {
     pc.addIceCandidate(new RTCIceCandidate(snap.val()));
   });
 }
 
-// -------------------- START --------------------
-
+// ---------------- START ----------------
 (async () => {
   await initMedia();
   await startCall();
 })();
-
-
