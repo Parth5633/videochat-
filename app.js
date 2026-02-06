@@ -52,7 +52,11 @@ roomRef.remove();
 
 async function start() {
   log("Getting camera...");
-  localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  localStream = await navigator.mediaDevices.getDisplayMedia({
+  video: true,
+  audio: true
+});
+
   localVideo.srcObject = localStream;
   log("Camera OK");
 
@@ -100,6 +104,7 @@ async function start() {
 }
 
 start();
+
 
 
 
