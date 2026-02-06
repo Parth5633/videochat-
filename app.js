@@ -10,12 +10,14 @@ const pc = new RTCPeerConnection({
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     {
-      urls: "turn:global.turn.twilio.com:3478?transport=udp",
-      username: "demo",
-      credential: "demo"
+      urls: "turn:192.168.1.5:3478",
+
+      username: "testuser",
+      credential: "testpass"
     }
   ]
 });
+
 
 pc.oniceconnectionstatechange = () => {
   const p = document.createElement("p");
@@ -98,6 +100,7 @@ async function start() {
 }
 
 start();
+
 
 
 
